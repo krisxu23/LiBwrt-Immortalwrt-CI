@@ -9,9 +9,9 @@
 # 默认 IP
 sed -i 's/192.168.1.1/192.168.2.1/g' package/base-files/files/bin/config_generate
 # 默认主机名
-sed -i "s/hostname='.*'/hostname='Roc'/g" package/base-files/files/bin/config_generate
+sed -i "s/hostname='.*'/hostname='LiBwrt'/g" package/base-files/files/bin/config_generate
 # LuCI 状态页编译署名
-sed -i "s/(\(luciversion || ''\))/(\1) + (' \/ Built by Roc')/g" \
+sed -i "s/(\(luciversion || ''\))/(\1) + (' \/ Built by Kris')/g" \
   feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/10_system.js
 
 # -------- 移除冲突/旧版本包 --------
