@@ -1,5 +1,4 @@
-<div align="center">
-<h1>OpenWrt — 云编译</h1>
+
 
 ## 特别提示
 
