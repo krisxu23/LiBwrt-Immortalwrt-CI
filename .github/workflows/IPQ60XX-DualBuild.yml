@@ -149,26 +149,25 @@ jobs:
         if: steps.compile.outputs.status == 'success'
         run: |
           cd $OPENWRT_PATH/bin/targets/*/*
-          # 创建临时目录存放需要的文件
-          mkdir -p firmware_temp
+          # 创建发布目录
+          mkdir -p publish
           
-          # 复制factory.bin文件
-          find . -name "*factory.bin" -exec cp {} firmware_temp/ \;
+          # 复制 factory.bin 文件
+          find . -maxdepth 1 -type f -name "*factory.bin" -exec cp {} publish/ \;
           
-          # 复制sysupgrade.bin文件
-          find . -name "*sysupgrade.bin" -exec cp {} firmware_temp/ \;
+          # 复制 sysupgrade.bin 文件
+          find . -maxdepth 1 -type f -name "*sysupgrade.bin" -exec cp {} publish/ \;
           
           # 复制配置文件
-          cp $OPENWRT_PATH/.config firmware_temp/ipq60xx.config
+          cp $OPENWRT_PATH/.config publish/ipq60xx.config
           
-          # 删除原目录所有文件，然后复制回需要的文件
-          rm -rf *
-          cp -r firmware_temp/* .
-          rm -rf firmware_temp
+          # 生成 SHA256 校验文件
+          (cd publish && sha256sum * > SHA256SUMS)
           
-          echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
-          echo "当前目录文件列表："
-          ls -la
+          echo "FIRMWARE_PATH=$PWD/publish" >> $GITHUB_ENV
+          echo "✅ 当前发布目录文件列表："
+          ls -la publish
+
 
       - name: Upload Firmware To Release(发布固件)
         if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
