@@ -26,7 +26,7 @@ rm -rf feeds/packages/net/open-app-filter
 rm -rf feeds/packages/net/adguardhome
 rm -rf feeds/packages/net/ariang
 rm -rf feeds/packages/net/frp
-rm -rf feeds/packages/lang/golang
+# rm -rf feeds/packages/lang/golang
 
 # -------- 添加 small-package 仓库 --------
 echo "📦 添加 kenzok8/small-package 源..."
