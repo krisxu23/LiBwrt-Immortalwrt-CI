@@ -1,23 +1,20 @@
 #!/bin/bash
 # =========================================
 # OpenWrt 自定义构建脚本
-# 功能：
-#  - 修改默认配置
-#  - 移除冲突包
+# 功能：修改默认配置 + 移除冲突包 + 拉取第三方插件
 # 作者：Kris
 # =========================================
 
-set -e
-
 # -------- 修改默认配置 --------
-echo "🛠️ 修改默认系统配置..."
+# 默认 IP
 sed -i 's/192.168.1.1/192.168.2.1/g' package/base-files/files/bin/config_generate
+# 默认主机名
 sed -i "s/hostname='.*'/hostname='LiBwrt'/g" package/base-files/files/bin/config_generate
+# LuCI 状态页编译署名
 sed -i "s/(\(luciversion || ''\))/(\1) + (' \/ Built by Kris')/g" \
   feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/10_system.js
 
-# -------- 移除旧版本冲突包 --------
-echo "🧹 清理旧版或冲突包..."
+# -------- 移除冲突/旧版本包 --------
 rm -rf feeds/luci/applications/luci-app-wechatpush
 rm -rf feeds/luci/applications/luci-app-appfilter
 rm -rf feeds/luci/applications/luci-app-frpc
@@ -26,27 +23,52 @@ rm -rf feeds/packages/net/open-app-filter
 rm -rf feeds/packages/net/adguardhome
 rm -rf feeds/packages/net/ariang
 rm -rf feeds/packages/net/frp
-# rm -rf feeds/packages/lang/golang
+rm -rf feeds/packages/lang/golang
 
-# -------- 添加 small-package 仓库 --------
-echo "📦 添加 kenzok8/small-package 源..."
-grep -q "src-git smpackage" feeds.conf.default || \
-    echo "src-git smpackage https://github.com/kenzok8/small-package" >> feeds.conf.default
+# -------- Git 稀疏克隆函数 --------
+function git_sparse_clone() {
+  branch="$1" repourl="$2" && shift 2
+  git clone --depth=1 -b $branch --single-branch --filter=blob:none --sparse $repourl
+  repodir=$(echo $repourl | awk -F '/' '{print $(NF)}')
+  cd $repodir && git sparse-checkout set $@
+  mv -f $@ ../package
+  cd .. && rm -rf $repodir
+}
 
-# -------- 更新 feeds 并安装 small-package --------
-echo "🔄 更新并安装 small-package 插件..."
-./scripts/feeds update -a
-./scripts/feeds install -a -p smpackage
+# -------- 基础插件 --------
+git clone --depth=1 https://github.com/sbwml/packages_lang_golang feeds/packages/lang/golang
+git clone --depth=1 https://github.com/sbwml/luci-app-openlist2 package/openlist
+git_sparse_clone ariang https://github.com/laipeng668/packages net/ariang
+git_sparse_clone frp https://github.com/laipeng668/packages net/frp
+mv -f package/frp feeds/packages/net/frp
+git_sparse_clone frp https://github.com/laipeng668/luci applications/luci-app-frpc applications/luci-app-frps
+mv -f package/luci-app-frpc feeds/luci/applications/luci-app-frpc
+mv -f package/luci-app-frps feeds/luci/applications/luci-app-frps
+git_sparse_clone master https://github.com/kenzok8/openwrt-packages adguardhome luci-app-adguardhome
+git_sparse_clone main https://github.com/VIKINGYFY/packages luci-app-wolplus
+git clone --depth=1 https://github.com/gdy666/luci-app-lucky package/luci-app-lucky
+git clone --depth=1 https://github.com/tty228/luci-app-wechatpush package/luci-app-wechatpush
+git clone --depth=1 https://github.com/destan19/OpenAppFilter.git package/OpenAppFilter
+git clone --depth=1 https://github.com/lwb1978/openwrt-gecoosac package/openwrt-gecoosac
+git clone --depth=1 https://github.com/NONGFAH/luci-app-athena-led package/luci-app-athena-led
+chmod +x package/luci-app-athena-led/root/etc/init.d/athena_led \
+         package/luci-app-athena-led/root/usr/sbin/athena-led
 
-# -------- 删除 small-package 冲突基础包 --------
-echo "⚙️ 删除 small-package 中的冲突基础包..."
-rm -rf feeds/smpackage/{base-files,dnsmasq,firewall*,fullconenat,libnftnl,nftables,ppp,opkg,ucl,upx,vsftpd*,miniupnpd-iptables,wireless-regdb}
+# -------- 网络代理相关 --------
+git clone --depth=1 -b main https://github.com/VIKINGYFY/homeproxy package/homeproxy
+git clone --depth=1 -b main https://github.com/nikkinikki-org/OpenWrt-momo package/momo
+git clone --depth=1 -b main https://github.com/nikkinikki-org/OpenWrt-nikki package/nikki
 
-# -------- small-package 全部插件已经安装 --------
-echo "✅ small-package 插件已安装完成，基础插件和网络代理插件全部来自 small-package"
+git_sparse_clone dev https://github.com/vernesong/OpenClash pkg
+mv -f package/pkg package/openclash
 
-# -------- feeds 最终更新 --------
-echo "🔁 最终 feeds 同步..."
+git_sparse_clone main https://github.com/xiaorouji/openwrt-passwall pkg
+mv -f package/pkg package/passwall
+
+git_sparse_clone main https://github.com/xiaorouji/openwrt-passwall2 pkg
+mv -f package/pkg package/passwall2
+
+# -------- feeds 更新 --------
 ./scripts/feeds update -a
 ./scripts/feeds install -a
 
